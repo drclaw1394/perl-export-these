@@ -2,65 +2,31 @@ use strict;
 use warnings;
 
 use Test::More;
+use lib "./t";
 
-BEGIN {
-  my $p= "./t/ModA.pm";
-  require $p;
-  Module::A->import("sub1", ":group1");
-}
-print sub1();
-print sub3();
-#print sub3;
-#print sub4;
+use ModA '$var1', '@var2', "%var3", "sub1", ":group1";
 
-ok 1;
 
+ok $var1 eq "var1", "Export scalar";
+
+ok @var2 == 2, "Array export";
+ok $var2[0] eq "var2" , "Array export";
+
+ok $var3{var3} == 1, "Hash Export ok";
+
+ok sub1 eq "sub1", "Sub export ok";
+
+ok group1_sub eq "group1_sub", "group export sub ok";
+
+ok $group1_scalar eq "group1_scalar", "group export scalar ok";
+
+ok @group1_array == 2, "group export array ok";
+ok $group1_array[0] eq "group1_array", "group export array ok";
+
+
+ok group2_sub eq "group2_sub", "group reexport sub ok";
+
+ok $group2_scalar eq "group2_scalar", "group reexport scalar ok";
+
+#sub4;
 done_testing;
-  #########################################################################
-  # our \@EXPORT=qw<@{["@export"]}>;                                      #
-  # our \%EXPORT_TAGS=(@{[join ", ",                                      #
-  #   map {'"'.$_.'"'=>"[qw<@{$export_tags{$_}}>]"} keys %export_tags]}); #
-  #########################################################################
-    #######################################################
-    # print __LINE__;                                     #
-    # print "\n";                                         #
-    # my \$ref=*{\\\${@{[$target]}::}{EXPORT_OK}}{ARRAY}; #
-    #                                                     #
-    # print "EOK: ".join ", ", \@\$ref;                   #
-    # print "\n";                                         #
-    #######################################################
-  ##################################
-  # if(\@@{[$target]}::EXPORT_OK){ #
-  #                                #
-  #   print "EXPORT OK";           #
-  #   sleep 1;                     #
-  # }                              #
-  ##################################
-
-  #push \@@{[$target]}::EXPORT_OK, qw<@{["@export_ok"]}>;
-    ########################################################################
-    # print STDERR "SELF IMPORT\n";                                        #
-    # my \$target=shift;                                                   #
-    #                                                                      #
-    # no strict "refs";                                                    #
-    # for(\@_ ? \@_ : \@EXPORT){                                           #
-    # print STDERR "PROCESSING \$_\n";                                     #
-    #   my \@syms;                                                         #
-    #   if(/^:/){                                                          #
-    #     my \$group=\$EXPORT_TAGS{\$_};                                   #
-    #     die  "Tag \$_ does not exists" unless \$group;                   #
-    #     push \@syms, \@\$group                                           #
-    #   }                                                                  #
-    #   else {                                                             #
-    #     #normal symbol                                                   #
-    #     print STDERR "normal symbol: \$_\n";                             #
-    #     print STDERR "exportok is: \@EXPORT_OK\n";                       #
-    #     my \$t=\$_;                                                      #
-    #     my \$found=grep /\$t/, \@EXPORT_OK;                              #
-    #                                                                      #
-    #     die "\$_ is not exported from ".__PACKAGE__."\n" unless \$found; #
-    #     push \@syms, \$_;                                                #
-    #   }                                                                  #
-    #   *{\$target."::".\$_}=\*{ __PACKAGE__ ."::".\$_} for \@syms;        #
-    # }                                                                    #
-    ########################################################################

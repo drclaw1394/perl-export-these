@@ -1,13 +1,14 @@
-package Module::B;
+package ModB;
+# TEST PACKAGE IMPORTED BY MOD A
 use Export::These (
-  "sub3", 
-    tags=>{group1=>[qw<sub4>]}
+  "sub4", group2=>["group2_sub", "\$group2_scalar"]
 );
-
-sub sub3 {
-"Sub3";
-}
+our $group2_scalar="group2_scalar";
 sub sub4 {
-"Sub4";
+  "sub4";
 }
-1;
+
+sub group2_sub {
+  "group2_sub";
+}
+__PACKAGE__;
