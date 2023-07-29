@@ -4,7 +4,7 @@ use warnings;
 use Test::More;
 use lib "./t";
 
-use ModA '$var1', '@var2', "%var3", "sub1", ":group1";
+use ModA  '$var1', '@var2', "%var3", "sub1", ":group1";
 
 
 ok $var1 eq "var1", "Export scalar";

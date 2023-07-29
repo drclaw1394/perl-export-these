@@ -107,7 +107,6 @@ sub import {
         my \$t=\$_;
         \$t="\\\\\$t" if \$t =~ /^\\\$/;
         my \$found=grep /\$t/, \@\$ref_export_ok;
-        print "is symbol in ok: \$t   FOUND IS: \$found\n";
         die "\$_ is not exported from ".__PACKAGE__."\n" unless \$found;
         push \@syms, \$_;
       }
@@ -139,17 +138,19 @@ sub import {
 
   sub import {
     my \$package=shift;
-
     my \$target=(caller(\$Exporter::ExportLevel))[0];
+
+
     _self_export(\$target, \@_);
     
     local \$Exporter::ExportLevel=\$Exporter::ExportLevel+3;
-    my \$ref;
-    eval {\&_reexport};
+    my \$ref=eval {*{\\\${\$package."::"}{_reexport}}{CODE}};
+
     if(\$ref){
       \$target=(caller(\$Exporter::ExportLevel))[0];
       _reexport(\$target, \@_);
     }
+
   }
 
   1;

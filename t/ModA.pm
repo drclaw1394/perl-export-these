@@ -2,6 +2,7 @@ package ModA;
 use ModB;
 # TEST PACKAGE EXPORTING USING THE Export::These.
 # Reexports symbols from ModB
+#
 use Export::These qw<sub1 sub2 $var1 @var2 %var3>;
 use Export::These group1=>["group1_sub", "\$group1_scalar", "\@group1_array", "\%group1_hash"];
 
