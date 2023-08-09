@@ -3,32 +3,15 @@ package Export::These;
 use strict;
 use warnings;
 
+our $VERSION="v0.1.0";
 
-use version; our $VERSION=version->declare("v0.1.0");
-# injects a import subroutine in to the package/class namespace (first arg)
-#
-# use Export::These qw<a list of  scalars to export>;
-#
-# use Export::These {
-#                     ok=>[],
-#                     export=>[],
-#                     tags=>[],
-#               }
-#
 sub import {
-  # Bootstrap...
-  # If the first argument is the name of this package, then we know its called
-  # with a ->
-  # In this case we use the package information from caller to  export 'like normal'
-  #
-  # Otherwise call is with  :: and an explicit target package was given. This  makes re-exporting very simple
-  #
   my $package=shift;
-  my $target=$package eq __PACKAGE__ ? caller: $package;
+  my $exporter=caller;
 
   #Treat args as key value pairs, unless the value is a string.
   #in this case it is the name of a symbol to export
-  my $k;my $v;
+  my ($k, $v);
 
   no strict "refs";
 
@@ -36,9 +19,10 @@ sub import {
   # These are used to accumulate our exported symbol names across multiple
   # use Export::Terse ...; statements
   # 
-  my $export_ok= \@{"@{[$target]}::EXPORT_OK"};
-  my $export= \@{"@{[$target]}::EXPORT"};
-  my $export_tags= \%{"@{[$target]}::EXPORT_TAGS"};
+  my $export_ok= \@{"@{[$exporter]}::EXPORT_OK"};
+  my $export= \@{"@{[$exporter]}::EXPORT"};
+  my $export_tags= \%{"@{[$exporter]}::EXPORT_TAGS"};
+
   while(@_){
     $k=shift;
 
@@ -73,7 +57,6 @@ sub import {
   # Generate the import sub here if it doesn't exist already
 
   local $"= " ";
-  my $exporter=$target;
   my $exist=eval {*{\${$exporter."::"}{import}}{CODE}};
   if($exist){
     return;
@@ -159,6 +142,7 @@ sub import {
 }
 1;
 
+
 =head1 NAME
 
 Export::Terse - Terse Symbol (Re)Exporting
@@ -166,75 +150,85 @@ Export::Terse - Terse Symbol (Re)Exporting
 
 =head1 SYNOPSIS
 
-A fine package with subs you want to export
+A fine package, exporting subroutines,
 
   package My::ModA;
 
-  use Export::These qw<dog cat :colors=>[qw<blue green>]>
+  use Export::These "dog", "cat", ":colors"=>[qw<blue green>];
 
   sub dog {...}  
   sub cat {...} 
   sub blue {...} 
   sub green {...}
+  1;
 
-Another package which would like to reexport the subs:
+Another package which would like to reexport the subs from My::ModA:
 
   package My::ModB;
   use My::ModA;
 
-  use Export::These ":colours"=>"more_colours";
+  use Export::These ":colors"=>["more_colours"];
 
   sub _reexport {
     my ($target, @names)=@_;
-    My::ModA::import($target, ":colours") if grep /:colours/, @names;
+    My::ModA->import(":colours") if grep /:colours/, @names;
   }
  
   sub more_colours { ....  }
+  1;
 
 
 Use your package like usual:
 
   use My::ModB qw<:colors dog>
 
-  # subs blue, green and dog  and more_colours imported
+  # suburtines blue, green , more_colors and dog  imported
 
 
 
 =head1 DESCRIPTION
 
-A terse way of specifying symbol exports and an easy way for modules to rexport
-symbols to an intrested pacakge:
+An terse approach to specifying symbol exports and an easy way to reexport
+symbols from dependencies. 
+
+Some key features:
 
 =over
 
-=item Terse and Implied specification for export/ok
+=item Terse and Implied Specification for export/ok
 
-If you list a symbol for export, it is automatically added to 'export_ok'
-Likewsise adding a symbol to a tag group, export_ok is then implied too.
-
+Listing a symbol for export, even in a group/tag, means it is automatically
+marked as 'export_ok'.  Less repetition, less typing.  
 
 =item Simple reexporting of symbols into a target name space
 
-Changing the call mechanism (->import or ::import) gives you control over what
-namespace to import to. 
-
+A module author can implement a C<_reexport> package subroutine, with any
+number of import calls C<-E<gt>import> of other modules. The routine is only
+executed after necessary setup is complete and is safe to use with C<Exporter>
+type modules.
 
 =back
 
+This module B<DOES NOT> inherit from C<Exporter> nor does it utilise the
+C<import> routine from C<Exporter>.  It injects its own import subroutine into
+the calling package. This injected subroutine adds the desired symbols to the
+target package similar to C<Exporter> and also calls the C<_reexport>
+subroutine, if the package has one defined.
+
 =head1 WHY USE THIS MODULE
 
-This is best illustrated with an example. Suppose you have a server modules,
-which uses a configuratoin module to process config data. However the main
-program also needs to use the subroutines from the config module. The issues
-with this is the consumer of the server moudle has to add more code to actually
-work with it.
+This is best illustrated with an example. Suppose you have a server module,
+which uses a configuration module to process configuration data. However the
+main program also needs to use the subroutines from the configuration module.
+The issues with this is the consumer of the server module has to add more code
+to actually work with it.
 
 It also forces the consumer to know which subroutines/data structure are needed
-or permitted in the server to actually do the import correctly
+or permitted in the server to actually do the import correctly.
 
 
 This module address this by allowing the Server module to easily reexport what
-it thinks a consumer will need to from a sub module.
+it knows a consumer will need to from a sub module.
 
 
 =head1 USAGE
@@ -244,28 +238,35 @@ it thinks a consumer will need to from a sub module.
     use Export::These ...;
 
 The pragma takes a list of arguments to add to the C<@EXPORT> and C<EXPORT_OK>
-variables. The items are taken as a name of a symbol, unless the following
-argument in the list is an array ref.
-
+variables. The items are taken as a name of a symbol or tag, unless the
+following argument in the list is an array ref.
 
     eg:
 
       use Export::These qw<sym1 sym2>;
 
 
-If the item name is "export_ok", then the items in the following array ref are added to the C<@EXPORT_OK> variable.
+If the item name is "export_ok", then the items in the following array ref are
+added to the C<@EXPORT_OK> variable.
     
 
-    eg use Export::These (export_ok=>[sym1]);
+    eg
+      use Export::These (export_ok=>[qw<sym1>]);
+
 
 If the item name is "export", then the items in the following array ref are
 added to the C<@EXPORT_OK>  and the C<EXPORT> variables. This is the same as
 simply listing the items at the top level.
   
-    eg use Export::These (export=>[sym1]);
+    eg 
 
-If the item has anyother name, it is a tag name and the items in the following
-array ref are added to the C<%EXPORT_TAGS>  variable:
+      use Export::These (export=>[qw<sym1>]);
+      # same as
+      # use Export::These qw<sym1>;
+
+
+If the item has another name, it is a tag name and the items in the following
+array ref are added to the C<%EXPORT_TAGS>  variable and to C<@EXPORT_OK>
 
     eg use Export::These (group1=>["sym1"]);
 
@@ -274,29 +275,82 @@ The list can contain any combination of the above:
 
     eq use Export::These ("sym1", group1=>["sym2", "sym3"], export_ok=>"sym4");
 
+
 =head2 Rexporting Symbols
 
 If a subroutine called C<_reexport> exists in your package, it will be called
-during import. The first argument is the package name of importer, the
-remaining arguments are the names of symbols to import.
+during import, after the normal symbols have been processed. The first argument
+is the package name of importer (the target), the remaining arguments are the
+names of symbols or tags to import.
 
-In this subroutine, you call import on any packages you want to rexport (assume
-they also use L<Export::These>). The key is to call with the :: notation not he
-arrow notation
+In this subroutine, you call C<import> on as any packages you want to reexport:
+
+  eg 
+  use Sub::Module;
+  use Another::Mod;
 
   sub _reexport {
     my ($target, @names)=@_;
 
-    Sub::Module::import($target, ...); 
+    Sub::Module->import;
+    Another::Mod->import(@names);
+    ...
+  }
+
+=head2 Conditional Rexporting
+
+If you would only like to require and export on certain conditions, some extra
+steps are required to ensure the dependencies modules are correctly required:
+
+  sub _reexport {
+
+    if(SOME_CONDITION){
+      {
+        # In an localised block, reset the export level
+        local $Exporter::ExportLevel=0;
+        require Sub::Module;
+        require Another::Module;
+      }
+
+      Sub::Module->import;
+      Another::Mod->import(@names);
+
+    }
   }
 
 =head1 COMPARISON TO OTHER MODULES
 
-Reexporting symbols with C<Exporter> is a little combersome.  You either need
-to import everything into you module name space (even if you don't need it) and
-the reexport from there. While you can import directly into a package, you need
-to know at what level in the call stack it is, which is pretty limiting.
+Reexporting symbols with C<Exporter> directly is a little cumbersome.  You
+either need to import everything into you module name space (even if you don't
+need it) and the reexport from there. Alternatively you can import directly into a
+package, you need to know at what level in the call stack it is, which is
+pretty limiting.
 
 
-There are a few 'Exporter' alternatives on CPAN but making it easy to rexport
-symbols is the main difference
+There are a few 'Exporter' alternatives on CPAN but making it easy to reexport
+symbols is the main benefit of this module.
+
+=head1 REPOSITOTY and BUGS
+
+Please report and feature requests or bugs via the github repo:
+
+L<https://github.com/drclaw1394/perl-export-these.git>
+
+=head1 AUTHOR
+
+Ruben Westerberg, E<lt>drclaw@mac.comE<gt>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (C) 2023 by Ruben Westerberg
+
+Licensed under MIT
+
+=head1 DISCLAIMER OF WARRANTIES
+
+THIS PACKAGE IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED WARRANTIES,
+INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS FOR A PARTICULAR PURPOSE.
+
+=cut
+

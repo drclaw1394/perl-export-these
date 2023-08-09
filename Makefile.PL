@@ -9,6 +9,22 @@ WriteMakefile(
     ABSTRACT_FROM     => 'lib/Export/These.pm', # retrieve abstract from module
     AUTHOR            => 'Ruben Westerberg <drclaw@mac.com>',
     LICENSE           => 'mit',
-    #Value must be from legacy list of licenses here
-    #https://metacpan.org/pod/Module::Build::API
+    META_ADD => {
+    "meta-spec" => {
+      version => 2
+    },
+    resources=> {
+      repository =>{
+        type => "git",
+        url => "git://github.com/drclaw1394/perl-export-these.git",
+        web => "http://github.com/drclaw1394/perl-export-these",
+      }
+    },
+    bugtracker => {
+      web => 'https://github.com/drclaw1394/perl-export-these/issues'
+    },
+  }
+
+
+
 );
