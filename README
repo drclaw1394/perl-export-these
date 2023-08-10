@@ -1,5 +1,5 @@
 NAME
-    Export::Terse - Terse Symbol (Re)Exporting
+    Export::These - Terse Symbol (Re)Exporting
 
 SYNOPSIS
     A fine package, exporting subroutines,
@@ -22,22 +22,22 @@ SYNOPSIS
       use Export::These ":colors"=>["more_colours"];
 
       sub _reexport {
-        my ($target, @names)=@_;
+        my ($packate, $target, @names)=@_;
         My::ModA->import(":colours") if grep /:colours/, @names;
       }
  
       sub more_colours { ....  }
       1;
 
-    Use your package like usual:
+    Use package like usual:
 
       use My::ModB qw<:colors dog>
 
       # suburtines blue, green , more_colors and dog  imported
 
 DESCRIPTION
-    An terse approach to specifying symbol exports and an easy way to
-    reexport symbols from dependencies.
+    Simplifies exporting of package symbols and reexporting symbols from
+    dependencies with less work.
 
     Some key features:
 
@@ -110,8 +110,9 @@ USAGE
 
   Rexporting Symbols
     If a subroutine called "_reexport" exists in your package, it will be
-    called during import, after the normal symbols have been processed. The
-    first argument is the package name of importer (the target), the
+    called on (with the -> notation) during import, after the normal symbols
+    have been processed. The first argument is the package name of exporter,
+    the second is package name of the importer (the target), and the
     remaining arguments are the names of symbols or tags to import.
 
     In this subroutine, you call "import" on as any packages you want to
@@ -122,7 +123,7 @@ USAGE
       use Another::Mod;
 
       sub _reexport {
-        my ($target, @names)=@_;
+        my ($package, $target, @names)=@_;
 
         Sub::Module->import;
         Another::Mod->import(@names);
@@ -135,6 +136,7 @@ USAGE
     correctly required:
 
       sub _reexport {
+        my ($package, $target, @names)=@_;
 
         if(SOME_CONDITION){
           {
@@ -150,12 +152,30 @@ USAGE
         }
       }
 
+  Reexport Inhertited  Symbols
+    Any exported symbols from the inheritance chain can be reexported in the
+    same manner:
+
+      eg 
+      parent ModParent;
+
+      sub _reexport {
+        my ($package, $target, @names)=@_;
+        $package->SUPER::import(@names);
+      }
+
 COMPARISON TO OTHER MODULES
+    Import::Into Provides clean way to reexport symbols, though you will
+    have to roll your own 'normal' export of symbols from you own package.
+
+    Import::Base Requires a custom package to group the imports and rexports
+    them. This is a different approach and might better suit your needs.
+
     Reexporting symbols with "Exporter" directly is a little cumbersome. You
     either need to import everything into you module name space (even if you
-    don't need it) and the reexport from there. Alternatively you can import
-    directly into a package, you need to know at what level in the call
-    stack it is, which is pretty limiting.
+    don't need it) and then reexport from there. Alternatively you can
+    import directly into a package, but you need to know at what level in
+    the call stack it is. This is exactly what this module addresses.
 
     There are a few 'Exporter' alternatives on CPAN but making it easy to
     reexport symbols is the main benefit of this module.

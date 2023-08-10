@@ -68,6 +68,7 @@ sub import {
 
 
   sub _self_export {
+    shift;
 
     my \$ref_export_ok= \\\@@{[$exporter]}::EXPORT_OK;
     my \$ref_export= \\\@@{[$exporter]}::EXPORT;
@@ -123,15 +124,13 @@ sub import {
     my \$package=shift;
     my \$target=(caller(\$Exporter::ExportLevel))[0];
 
-
-    _self_export(\$target, \@_);
+    $exporter->_self_export(\$target, \@_);
     
     local \$Exporter::ExportLevel=\$Exporter::ExportLevel+3;
     my \$ref=eval {*{\\\${\$package."::"}{_reexport}}{CODE}};
 
     if(\$ref){
-      \$target=(caller(\$Exporter::ExportLevel))[0];
-      _reexport(\$target, \@_);
+      $exporter->_reexport(\$target, \@_);
     }
 
   }
@@ -145,7 +144,7 @@ sub import {
 
 =head1 NAME
 
-Export::Terse - Terse Symbol (Re)Exporting
+Export::These - Terse Symbol (Re)Exporting
 
 
 =head1 SYNOPSIS
@@ -170,7 +169,7 @@ Another package which would like to reexport the subs from My::ModA:
   use Export::These ":colors"=>["more_colours"];
 
   sub _reexport {
-    my ($target, @names)=@_;
+    my ($packate, $target, @names)=@_;
     My::ModA->import(":colours") if grep /:colours/, @names;
   }
  
@@ -178,7 +177,7 @@ Another package which would like to reexport the subs from My::ModA:
   1;
 
 
-Use your package like usual:
+Use package like usual:
 
   use My::ModB qw<:colors dog>
 
@@ -188,8 +187,8 @@ Use your package like usual:
 
 =head1 DESCRIPTION
 
-An terse approach to specifying symbol exports and an easy way to reexport
-symbols from dependencies. 
+Simplifies exporting of package symbols and reexporting symbols from
+dependencies with less work.
 
 Some key features:
 
@@ -279,8 +278,9 @@ The list can contain any combination of the above:
 =head2 Rexporting Symbols
 
 If a subroutine called C<_reexport> exists in your package, it will be called
-during import, after the normal symbols have been processed. The first argument
-is the package name of importer (the target), the remaining arguments are the
+on (with the -> notation) during import, after the normal symbols have been
+processed. The first argument is the package name of exporter, the second is
+package name of the importer (the target), and the remaining arguments are the
 names of symbols or tags to import.
 
 In this subroutine, you call C<import> on as any packages you want to reexport:
@@ -290,7 +290,7 @@ In this subroutine, you call C<import> on as any packages you want to reexport:
   use Another::Mod;
 
   sub _reexport {
-    my ($target, @names)=@_;
+    my ($package, $target, @names)=@_;
 
     Sub::Module->import;
     Another::Mod->import(@names);
@@ -303,6 +303,7 @@ If you would only like to require and export on certain conditions, some extra
 steps are required to ensure the dependencies modules are correctly required:
 
   sub _reexport {
+    my ($package, $target, @names)=@_;
 
     if(SOME_CONDITION){
       {
@@ -318,13 +319,34 @@ steps are required to ensure the dependencies modules are correctly required:
     }
   }
 
+=head2 Reexport Inhertited  Symbols
+
+Any exported symbols from the inheritance chain can be reexported in the same
+manner:
+
+  eg 
+  parent ModParent;
+
+  sub _reexport {
+    my ($package, $target, @names)=@_;
+    $package->SUPER::import(@names);
+  }
+
+
 =head1 COMPARISON TO OTHER MODULES
+
+L<Import::Into> Provides clean way to reexport symbols, though you will have to
+roll your own 'normal' export of symbols from you own package.
+
+L<Import::Base> Requires a custom package to group the imports and rexports
+them. This is a different approach and might better suit your needs. 
+
 
 Reexporting symbols with C<Exporter> directly is a little cumbersome.  You
 either need to import everything into you module name space (even if you don't
-need it) and the reexport from there. Alternatively you can import directly into a
-package, you need to know at what level in the call stack it is, which is
-pretty limiting.
+need it) and then reexport from there. Alternatively you can import directly
+into a package, but you need to know at what level in the call stack it is.
+This is exactly what this module addresses.
 
 
 There are a few 'Exporter' alternatives on CPAN but making it easy to reexport

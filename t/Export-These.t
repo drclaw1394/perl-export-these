@@ -6,7 +6,6 @@ use lib "./t";
 
 use ModA  '$var1', '@var2', "%var3", "sub1", ":group1";
 
-
 ok $var1 eq "var1", "Export scalar";
 
 ok @var2 == 2, "Array export";
@@ -29,4 +28,8 @@ ok group2_sub eq "group2_sub", "group reexport sub ok";
 ok $group2_scalar eq "group2_scalar", "group reexport scalar ok";
 
 #sub4;
+
+
+
+
 done_testing;

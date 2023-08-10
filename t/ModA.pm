@@ -7,7 +7,8 @@ use Export::These qw<sub1 sub2 $var1 @var2 %var3>;
 use Export::These group1=>["group1_sub", "\$group1_scalar", "\@group1_array", "\%group1_hash"];
 
 sub _reexport {
- ModB->import( "sub4", ":group2");
+
+  ModB->import( "sub4", ":group2");
 }
 
 our $var1="var1";
