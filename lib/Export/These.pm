@@ -187,47 +187,35 @@ Use package like usual:
 
 =head1 DESCRIPTION
 
-Simplifies exporting of package symbols and reexporting symbols from
-dependencies with less work.
+A module to make exporting symbols less verbose and facilitate reexporting of
+symbols from dependencies with minimal input from the module author.
 
-Some key features:
+By default listing a symbol for export, even in a group/tag, means it will be
+automatically marked as 'export_ok', saving on duplication and managing two
+separate lists.
 
-=over
+It B<DOES NOT> inherit from C<Exporter> nor does it utilise the C<import>
+routine from C<Exporter>. It injects its own C<import> subroutine into the each
+calling package. This injected subroutine adds the desired symbols to the
+target package  as you would expect.
 
-=item Terse and Implied Specification for export/ok
-
-Listing a symbol for export, even in a group/tag, means it is automatically
-marked as 'export_ok'.  Less repetition, less typing.  
-
-=item Simple reexporting of symbols into a target name space
-
-A module author can implement a C<_reexport> package subroutine, with any
-number of import calls C<-E<gt>import> of other modules. The routine is only
-executed after necessary setup is complete and is safe to use with C<Exporter>
-type modules.
-
-=back
-
-This module B<DOES NOT> inherit from C<Exporter> nor does it utilise the
-C<import> routine from C<Exporter>.  It injects its own import subroutine into
-the calling package. This injected subroutine adds the desired symbols to the
-target package similar to C<Exporter> and also calls the C<_reexport>
-subroutine, if the package has one defined.
-
-=head1 WHY USE THIS MODULE
-
-This is best illustrated with an example. Suppose you have a server module,
-which uses a configuration module to process configuration data. However the
-main program also needs to use the subroutines from the configuration module.
-The issues with this is the consumer of the server module has to add more code
-to actually work with it.
-
-It also forces the consumer to know which subroutines/data structure are needed
-or permitted in the server to actually do the import correctly.
+If the exporting package has a C<_reexport> subroutine, it is called when being
+imported. This is the 'hook' location where its safe to call C<-E<gt>import> on
+any dependencies modules it might want to export. The symbols from these
+packages will automatically be installed into the target package with no extra
+configuration needed.
 
 
-This module address this by allowing the Server module to easily reexport what
-it knows a consumer will need to from a sub module.
+
+=head1 MOTIVATION
+
+Suppose you have a server module, which uses a configuration module to process
+configuration data. However the main program (which imported the server module)
+also needs to use the subroutines from the configuration module. The consumer
+of the server module has to also add the configuration module as a dependency.
+
+With this module the server can simply reexport the required configuration
+routines, injecting the dependency, in stead of hard coding it.
 
 
 =head1 USAGE
@@ -250,7 +238,7 @@ added to the C<@EXPORT_OK> variable.
     
 
     eg
-      use Export::These (export_ok=>[qw<sym1>]);
+      use Export::These export_ok=>[qw<sym1>];
 
 
 If the item name is "export", then the items in the following array ref are
@@ -259,7 +247,7 @@ simply listing the items at the top level.
   
     eg 
 
-      use Export::These (export=>[qw<sym1>]);
+      use Export::These export=>[qw<sym1>];
       # same as
       # use Export::These qw<sym1>;
 
@@ -267,21 +255,21 @@ simply listing the items at the top level.
 If the item has another name, it is a tag name and the items in the following
 array ref are added to the C<%EXPORT_TAGS>  variable and to C<@EXPORT_OK>
 
-    eg use Export::These (group1=>["sym1"]);
+    eg use Export::These group1=>["sym1"];
 
 
 The list can contain any combination of the above:
 
-    eq use Export::These ("sym1", group1=>["sym2", "sym3"], export_ok=>"sym4");
+    eq use Export::These "sym1", group1=>["sym2", "sym3"], export_ok=>"sym4";
 
 
 =head2 Rexporting Symbols
 
-If a subroutine called C<_reexport> exists in your package, it will be called
-on (with the -> notation) during import, after the normal symbols have been
-processed. The first argument is the package name of exporter, the second is
-package name of the importer (the target), and the remaining arguments are the
-names of symbols or tags to import.
+If a subroutine called C<_reexport> exists in the exporting package, it will be
+called on (with the -> notation) during import, after the normal symbols have
+been processed. The first argument is the package name of exporter, the second
+is the package name of the importer (the target), and the remaining arguments
+are the names of symbols or tags to import.
 
 In this subroutine, you call C<import> on as any packages you want to reexport:
 
@@ -297,10 +285,12 @@ In this subroutine, you call C<import> on as any packages you want to reexport:
     ...
   }
 
-=head2 Conditional Rexporting
+=head2 Conditional Reexporting
 
 If you would only like to require and export on certain conditions, some extra
-steps are required to ensure the dependencies modules are correctly required:
+steps are needed to ensure correct setup of back end variables. Namely the
+C<$Exporter::ExportLevel> variable needs to be localized and set to 0 inside a
+block BEFORE calling the C<-E<gt>import> subroutine on the package.
 
   sub _reexport {
     my ($package, $target, @names)=@_;
@@ -319,18 +309,25 @@ steps are required to ensure the dependencies modules are correctly required:
     }
   }
 
-=head2 Reexport Inhertited  Symbols
+=head2 Reexport Super Class Symbols
 
 Any exported symbols from the inheritance chain can be reexported in the same
-manner:
+manner, as long as they are package subroutines and not methods:
 
   eg 
-  parent ModParent;
 
-  sub _reexport {
-    my ($package, $target, @names)=@_;
-    $package->SUPER::import(@names);
-  }
+    package ModChild;
+    parent ModParent;
+
+      # or
+      
+    class ModChild :isa(ModParent)
+
+    
+    sub _reexport {
+      my ($package, $target, @names)=@_;
+      $package->SUPER::import(@names);
+    }
 
 
 =head1 COMPARISON TO OTHER MODULES
@@ -338,7 +335,7 @@ manner:
 L<Import::Into> Provides clean way to reexport symbols, though you will have to
 roll your own 'normal' export of symbols from you own package.
 
-L<Import::Base> Requires a custom package to group the imports and rexports
+L<Import::Base> Requires a custom package to group the imports and reexports
 them. This is a different approach and might better suit your needs. 
 
 
@@ -348,9 +345,6 @@ need it) and then reexport from there. Alternatively you can import directly
 into a package, but you need to know at what level in the call stack it is.
 This is exactly what this module addresses.
 
-
-There are a few 'Exporter' alternatives on CPAN but making it easy to reexport
-symbols is the main benefit of this module.
 
 =head1 REPOSITOTY and BUGS
 
