@@ -1,4 +1,8 @@
 Revision history for Perl extension Export::These.
+v0.2.0 2023-10-29
+  [features]
+    - add @EXPORT_PASS variable for user control over what symbols are
+      allows to reexport
 
 v0.1.2 2023-09-07
   [fixes]

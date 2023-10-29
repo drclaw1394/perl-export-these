@@ -3,26 +3,35 @@ package Export::These;
 use strict;
 use warnings;
 
-our $VERSION="v0.1.2";
+our $VERSION="v0.2.0";
 
 sub import {
   my $package=shift;
   my $exporter=caller;
 
-  #Treat args as key value pairs, unless the value is a string.
-  #in this case it is the name of a symbol to export
+  # Treat args as key value pairs, unless the value is a string.  in
+  # this case it is the name of a symbol to export directly
+
   my ($k, $v);
 
   no strict "refs";
 
-  # Locate or create the EXPORT, EXPORT_OK and EXPORT_TAGS package variables.
-  # These are used to accumulate our exported symbol names across multiple
-  # use Export::Terse ...; statements
+  # Locate or create the EXPORT, EXPORT_OK and EXPORT_TAGS package
+  # variables.  v0.2.0 adds EXPORT_PASS an array of names to allow to
+  # pass through for rexporting
+  # These are used to accumulate our exported symbol names across
+  # multiple use Export::Terse ...; statements
   # 
   my $export_ok= \@{"@{[$exporter]}::EXPORT_OK"};
   my $export= \@{"@{[$exporter]}::EXPORT"};
   my $export_tags= \%{"@{[$exporter]}::EXPORT_TAGS"};
 
+  my $export_pass= \@{"@{[$exporter]}::EXPORT_PASS"};
+  #set
+  #\${"@{[$exporter]}::EXPORT_PASS"}
+  say STDERR "EXPORT PASS defined: @$export_pass";
+
+  
   while(@_){
     $k=shift;
 
@@ -42,6 +51,9 @@ sub import {
       elsif(/export$/ and $r eq "ARRAY"){
         push @$export, @$v;
         push @$export_ok, @$v;
+      }
+      elsif(/export_pass/ and $r eq "ARRAY"){
+        push @$export_pass, @$v;
       }
       elsif($r eq "ARRAY"){
         #Assume key is a tag name
@@ -73,6 +85,7 @@ sub import {
     my \$ref_export_ok= \\\@@{[$exporter]}::EXPORT_OK;
     my \$ref_export= \\\@@{[$exporter]}::EXPORT;
     my \$ref_tags= \\\%@{[$exporter]}::EXPORT_TAGS;
+    my \$ref_export_pass= \\\@@{[$exporter]}::EXPORT_PASS;
 
     my \$target=shift;
 
@@ -91,8 +104,21 @@ sub import {
         my \$t=\$_;
         \$t="\\\\\$t" if \$t =~ /^\\\$/;
         my \$found=grep /\$t/, \@\$ref_export_ok;
-        die "\$_ is not exported from ".__PACKAGE__."\n" unless \$found;
-        push \@syms, \$_;
+        print STDERR "Found in export ok :\$found for \$t ".__PACKAGE__;
+        print STDERR "\n";
+         
+        push \@syms, \$_ if \$found;
+
+        \$found\|\|=grep /\$t/, \@\$ref_export_pass;
+        print STDERR "Found in export ok :\$found for \$t ".__PACKAGE__;
+        print STDERR "\n";
+
+
+        # If ref export is an empty array, we pass everything
+        \$found\|\|=((defined(\$ref_export_pass) and !\@\$ref_export_pass));
+        print STDERR "Found in export ok :\$found for \$t ".__PACKAGE__;
+        print STDERR "\n";
+        die "\$_ is not exported or reexported from ".__PACKAGE__."\n" unless \$found;
       }
       
       my \%map=(

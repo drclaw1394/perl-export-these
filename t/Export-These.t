@@ -27,9 +27,15 @@ ok group2_sub eq "group2_sub", "group reexport sub ok";
 
 ok $group2_scalar eq "group2_scalar", "group reexport scalar ok";
 
-#sub4;
 
 
+# Test passthrough
+
+use ModC  "sub4";
+ok sub4 eq "sub4";
+
+use ModD  qw<:group3 df>;
+ok group3_sub eq "group3_sub";
 
 
 done_testing;
