@@ -11,3 +11,5 @@ t/Export-These.t
 t/ModA.pm
 t/ModASub.pm
 t/ModB.pm
+t/ModC.pm
+t/ModD.pm
