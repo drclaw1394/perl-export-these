@@ -232,7 +232,7 @@ Use package like usual:
 
   use My::ModB qw<:colors dog>
 
-  # suburtines blue, green , more_colors and dog  imported
+  # subroutines blue, green, more_colors and dog imported
 
 
 
