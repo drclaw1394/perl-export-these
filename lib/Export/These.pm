@@ -3,7 +3,7 @@ package Export::These;
 use strict;
 use warnings;
 
-our $VERSION="v0.2.1";
+our $VERSION="v0.2.2";
 
 sub import {
   my $package=shift;
@@ -149,8 +149,21 @@ sub import {
         }
 
         no warnings "redefine";
-        eval { *{\$target."::".\$name}= *{ \\\${__PACKAGE__ ."::"}{\$name}}{\$type}; };
-        die "Could not export \$prefix\$name from ".__PACKAGE__ if \$\@;
+        if(\$type ne "CODE"){
+          eval { *{\$target."::".\$name}= *{ \\\${__PACKAGE__ ."::"}{\$name}}{\$type}; };
+          die "Could not export \$prefix\$name from ".__PACKAGE__ if \$\@;
+        }
+        else {
+          #
+          # This was added to address https://github.com/Perl/perl5/issues/23131
+          #
+
+          eval { 
+            my \$package=__PACKAGE__;
+            *{\$target."::".\$name}= &{"\$package"."::\$name"}
+          };
+          die "Could not export \$prefix\$name from ".__PACKAGE__ if \$\@;
+        }
 
 
       }
