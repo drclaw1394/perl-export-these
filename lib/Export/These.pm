@@ -73,12 +73,14 @@ sub import {
   # Generate the import sub here if it doesn't exist already
 
   local $"= " ";
-  my $exist=eval {*{\${$exporter."::"}{import}}{CODE}};
+  #my $exist=eval {*{\${$exporter."::"}{import}}{CODE}};
+  my $str="defined &$exporter"."::import" ;
+  my $exist=eval $str;
+
   if($exist){
     return;
   }
-
-  my $res=eval qq|
+  my $code=qq|
   package $exporter;
   no strict "refs";
 
@@ -155,14 +157,28 @@ sub import {
         }
         else {
           #
-          # This was added to address https://github.com/Perl/perl5/issues/23131
+	  # No longer access CODE slot as this might not always exists. See
+	  # https://github.com/Perl/perl5/issues/23131
+	  # Work around here ( and elsewhere in this code) is to use the 
+	  # defined operator to test if sub routine exists instead of 
+	  # directly accessin the CODE slot in the typeclob
+	  #
+	  # If it is defined then we dereference a non strict ref.
+	  #
+	  # Note the the defined test is require to before hand to workaround
+	  # autovivification when dereferening
           #
 
-          eval { 
-            my \$package=__PACKAGE__;
-            *{\$target."::".\$name}= &{"\$package"."::\$name"}
-          };
-          die "Could not export \$prefix\$name from ".__PACKAGE__ if \$\@;
+          my \$package=__PACKAGE__;
+	  my \$str="&\$package"."::\$name";
+	  my \$defined=eval  "defined $str";
+	  if(\$defined){
+	  	my \$ref= \\&{\$package."::\$name"};
+	 	 *{\$target."::".\$name}= \$ref;
+  	  }
+	  else {
+        	  die "Could not export \$prefix\$name from ".__PACKAGE__;
+  		}
         }
 
 
@@ -178,9 +194,11 @@ sub import {
     \$Exporter::ExportLevel//=0;
     my \$target=(caller(\$Exporter::ExportLevel))[0];
 
-    my \$ref=eval {*{\\\${\$package."::"}{_preexport}}{CODE}};
+    #my \$ref=eval {*{\\\${\$package."::"}{_preexport}}{CODE}};
+    # my \$ref=eval { \\&{\$package."::_preexport"} };
+    my \$defined=eval "defined &\$package"."::_preexport";
     my \@args;
-    if(\$ref){
+    if(\$defined){
       \@args=$exporter->_preexport(\$target, \@_);
     }
     else {
@@ -190,9 +208,11 @@ sub import {
     $exporter->_self_export(\$target, \@args);
     
     local \$Exporter::ExportLevel=\$Exporter::ExportLevel+3;
-    \$ref=eval {*{\\\${\$package."::"}{_reexport}}{CODE}};
+    #\$ref=eval {*{\\\${\$package."::"}{_reexport}}{CODE}};
+    #\$ref=eval { \\&{\$package."::_reexport"} };
+    \$defined=eval "defined &\$package"."::_reexport";
 
-    if(\$ref){
+    if(\$defined){
       $exporter->_reexport(\$target, \@args);
     }
 
@@ -200,6 +220,7 @@ sub import {
 
   1;
   |;
+  my $res=eval $code;
   die $@ unless $res;
 }
 1;
